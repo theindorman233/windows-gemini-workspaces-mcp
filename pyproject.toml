@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "windows-gemini-workspaces-mcp"
+version = "1.0.0"
+description = "Secure, GitHub-OAuth-protected live Windows workspace MCP server for Gemini App"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = ["fastmcp>=4.2.2"]
+
+[tool.setuptools]
+py-modules = [
+    "oauth_probe",
+    "live_workspaces",
+    "workspace_files",
+    "workspace_commands",
+    "synthetic_edits",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
