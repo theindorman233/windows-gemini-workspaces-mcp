@@ -31,6 +31,19 @@ import workspace_files
 import live_workspaces
 
 
+# When the server is hosted detached it owns no console, so stdout/stderr have no
+# valid destination and every log line would be dropped. Reopen both onto the file
+# named by MCP_LOG_FILE before FastMCP installs its own handlers.
+LOG_FILE = os.environ.get("MCP_LOG_FILE", "").strip()
+if LOG_FILE:
+    try:
+        log_stream = open(LOG_FILE, "a", buffering=1, encoding="utf-8", errors="replace")
+        sys.stdout = log_stream
+        sys.stderr = log_stream
+    except OSError:
+        pass
+
+
 PLACEHOLDER_VALUES = frozenset({
     "123456789",
     "example-github-oauth-client-id",

@@ -75,6 +75,21 @@ $env:MCP_ALLOW_DCR = '1'   # 首次在 Gemini App 关联连接器时临时开启
 .\.venv\Scripts\pytest.exe -v
 ```
 
+### 6. 可选：托管为计划任务
+
+在管理员 PowerShell 中执行 `.\register_tasks.ps1`，会创建两个当前用户级任务：
+
+| 任务 | 触发器 | 动作 |
+| --- | --- | --- |
+| `WindowsGeminiMcpLive` | 登录时 + 开机时 | `wscript.exe //B //Nologo launch_hidden.vbs` |
+| `WindowsGeminiMcpLiveGuard` | 每分钟 | `wscript.exe //B //Nologo guard_hidden.vbs` |
+
+两者都经 `wscript.exe` 启动是有意为之：它是 GUI 子系统宿主，任务计划程序不会为任务创建控制台。若直接把 `pwsh.exe` 设为任务动作，它是控制台子系统程序，创建时就会拿到控制台窗口，而 `-WindowStyle Hidden` 只是事后再把这个窗口隐藏，中间那一瞬会在屏幕上闪出终端。
+
+`launch_hidden.vbs` 以 `-Detach` 调用 `start_live_task.ps1`，后者用 `CreateNoWindow` 启动服务，使其完全不占用控制台，PID 写入 `live-server-<端口>.pid`，并等到端口真正监听后才报告成功。分离启动的进程没有 stdout/stderr，因此 `oauth_probe.py` 会在设置了 `MCP_LOG_FILE` 时把两者重定向到 `%LOCALAPPDATA%\WindowsGeminiMCP\server.log`。PID 文件名带端口，不同端口的实例不会互相误杀。
+
+不配置 `RestartOnFailure`，自愈由守卫任务负责：它每分钟检查一次端口，服务在线时一秒内退出，否则重启主任务并把结果写入 `guard.log`。
+
 ## 安全建议
 
 - 建议收紧 `%LOCALAPPDATA%\WindowsGeminiMCP` 目录权限（`icacls`），仅保留当前用户、`SYSTEM` 与 `Administrators`。

@@ -83,6 +83,25 @@ Once linked in Gemini App, set `MCP_ALLOW_DCR=0` (the default in `start_live_tas
 .\.venv\Scripts\pytest.exe -v
 ```
 
+### 6. Optional: Host as a Scheduled Task
+
+`register_tasks.ps1` creates two per-user tasks. Run it from an elevated PowerShell:
+
+```powershell
+.\register_tasks.ps1
+```
+
+| Task | Trigger | Action |
+| --- | --- | --- |
+| `WindowsGeminiMcpLive` | at logon and at boot | `wscript.exe //B //Nologo launch_hidden.vbs` |
+| `WindowsGeminiMcpLiveGuard` | every minute | `wscript.exe //B //Nologo guard_hidden.vbs` |
+
+Both actions go through `wscript.exe` on purpose. It is a GUI-subsystem host, so Task Scheduler never creates a console for the task. Pointing a task at `pwsh.exe` directly does not work: as a console-subsystem program it gets a console window at creation, and `-WindowStyle Hidden` only hides that window afterwards, which flashes a terminal on screen.
+
+`launch_hidden.vbs` calls `start_live_task.ps1 -Detach`, which starts the server with `CreateNoWindow` so it owns no console at all, writes the PID to `live-server-<port>.pid`, and waits for the port before reporting success. Because a detached process has no stdout/stderr, `oauth_probe.py` reopens both onto `%LOCALAPPDATA%\WindowsGeminiMCP\server.log` when `MCP_LOG_FILE` is set. The PID file is per port, so instances on different ports never shut each other down.
+
+No `RestartOnFailure` is configured. Recovery is the guard's job: it checks the port once a minute, exits in under a second while the service answers, and otherwise restarts the main task and logs the outcome to `guard.log`.
+
 ## Security Notes
 
 - Keep `%LOCALAPPDATA%\WindowsGeminiMCP` restricted to your Windows user, `SYSTEM`, and `Administrators` (`icacls`).
